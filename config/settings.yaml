@@ -1,0 +1,142 @@
+# Accessibility Agent Configuration
+# This is the default configuration file. Override settings with environment variables or CLI args.
+
+# NVDA Settings
+nvda:
+  # NVDA log file path. Use %TEMP% for Windows temp directory
+  log_path: "%TEMP%\\nvda.log"
+
+  # Recommend enabling NVDA Speech Viewer for visual verification
+  speech_viewer: true
+
+  # Log level: debug, info, warning, error
+  # Debug level is required for detailed logs
+  log_level: "debug"
+
+  # Timeout for waiting for NVDA response (seconds)
+  response_timeout: 2.0
+
+# Browser Settings
+browser:
+  # Browser to use: "auto" for default browser, or specify path
+  default: "auto"
+  # path: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+
+  # Headless mode (always false for screen reader testing)
+  headless: false
+
+  # Browser startup timeout (seconds)
+  startup_timeout: 10.0
+
+# Keyboard Settings
+keyboard:
+  # Delay between keystrokes (seconds)
+  # Adjust based on system responsiveness
+  delay_between_keys: 0.1
+
+  # Timeout for waiting for NVDA output after keystroke (seconds)
+  nvda_response_timeout: 2.0
+
+  # Number of retries for failed actions
+  retry_on_timeout: 1
+
+  # Delay before first action (seconds)
+  # Allows page to fully load
+  initial_delay: 2.0
+
+# Agent Settings
+agent:
+  # AI model to use for decision making
+  # Format: "provider:model" (e.g., "openai:gpt-4", "openai:gpt-4-turbo")
+  model: "openai:gpt-4"
+
+  # Maximum number of actions before stopping (prevents infinite loops)
+  max_actions: 100
+
+  # Exploration depth (how many levels deep to navigate)
+  exploration_depth: 3
+
+  # Temperature for AI responses (0.0 - 1.0)
+  # Lower = more deterministic, Higher = more creative
+  temperature: 0.7
+
+  # Enable agent memory (remember visited elements)
+  enable_memory: true
+
+# WCAG Settings
+wcag:
+  # WCAG version to test against: "2.1" or "2.2"
+  version: "2.1"
+
+  # Conformance levels to test: A, AA, AAA
+  conformance_levels:
+    - "A"
+    - "AA"
+    - "AAA"
+
+  # Minimum severity to report: "low", "medium", "high", "critical"
+  min_severity: "low"
+
+  # Focus areas for testing
+  focus_areas:
+    - "keyboard_navigation"
+    - "labels_and_names"
+    - "heading_structure"
+    - "link_text"
+    - "form_fields"
+    - "landmarks"
+
+# Reporting Settings
+reporting:
+  # Directory to save HTML reports
+  output_dir: "./reports"
+
+  # Report template name
+  template: "default"
+
+  # Include screenshots in report (requires Playwright)
+  include_screenshots: false
+
+  # Report filename format
+  # Available variables: {url}, {date}, {time}, {timestamp}
+  filename_format: "accessibility_report_{timestamp}.html"
+
+  # Include detailed evidence (keyboard sequences, NVDA output)
+  include_evidence: true
+
+  # Include recommendations for fixes
+  include_recommendations: true
+
+# Logging Settings
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+
+  # Log format: "json" or "text"
+  format: "json"
+
+  # Log file location
+  file: "./logs/agent.log"
+
+  # Enable console logging
+  console: true
+
+  # Console log format: "json" or "text"
+  console_format: "text"
+
+  # Rotate logs (max size in MB)
+  rotate_size_mb: 10
+
+  # Keep N backup log files
+  backup_count: 5
+
+# Advanced Settings
+advanced:
+  # Enable debug mode (verbose logging, no cleanup on error)
+  debug_mode: false
+
+  # Correlation window for action-feedback matching (seconds)
+  correlation_window: 3.0
+
+  # Enable Playwright DOM inspection (optional)
+  enable_playwright: false

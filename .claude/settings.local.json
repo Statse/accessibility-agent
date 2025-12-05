@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node download_unit_symbols.js)",
+      "Bash(curl:*)",
+      "Bash(node download_unit_symbols_direct.js:*)",
+      "Bash(node download_all_nato_symbols.js:*)",
+      "Bash(tee:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(if [ -d \"venv\" ])",
+      "Bash(then echo \"venv exists\")",
+      "Bash(else echo \"venv not found\")",
+      "Bash(fi)",
+      "Bash(python -m venv:*)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(python -m pip install:*)",
+      "Bash(pip install:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
