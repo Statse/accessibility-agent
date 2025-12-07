@@ -274,6 +274,10 @@ class AccessibilityTestRunner:
             # Track filled fields for form filling mode
             filled_fields = []
 
+            # Track browser UI detections (to know when we've left the page)
+            browser_ui_count = 0
+            browser_ui_threshold = 2  # Stop after 2 consecutive browser UI elements
+
             # Exploration loop
             for i in range(self.max_actions):
                 # Press Tab to navigate to next element
@@ -290,6 +294,23 @@ class AccessibilityTestRunner:
                 if nvda_speech:
                     nvda_text = nvda_speech.full_text
                     logger.info(f"  NVDA says: '{nvda_text}'")
+
+                    # Check if we've left the webpage and entered browser UI
+                    if self._is_browser_ui_element(nvda_text):
+                        browser_ui_count += 1
+                        logger.warning(f"  ⚠ Browser UI detected: '{nvda_text}' (count: {browser_ui_count}/{browser_ui_threshold})")
+
+                        if browser_ui_count >= browser_ui_threshold:
+                            logger.info("="*60)
+                            logger.info("🛑 STOPPED: Focus has left the webpage content")
+                            logger.info(f"   Detected {browser_ui_count} consecutive browser UI elements")
+                            logger.info(f"   Last element: '{nvda_text}'")
+                            logger.info("   This prevents navigating through browser controls")
+                            logger.info("="*60)
+                            break  # Stop exploration - we've left the page
+                    else:
+                        # Reset counter if we're back on web content
+                        browser_ui_count = 0
 
                     # Log the action
                     self.action_logger.log_action(
@@ -520,6 +541,68 @@ class AccessibilityTestRunner:
 
         return None
 
+    def _is_browser_ui_element(self, nvda_text: str) -> bool:
+        """
+        Detect if NVDA output indicates browser UI (not web content).
+
+        Browser UI elements include address bar, bookmarks, extensions, tabs, etc.
+        When we detect these, it means focus has left the webpage.
+
+        Args:
+            nvda_text: Text announced by NVDA
+
+        Returns:
+            True if element is browser UI, False if webpage content
+        """
+        if not nvda_text or nvda_text == "[SILENT - No NVDA output]":
+            return False
+
+        nvda_lower = nvda_text.lower()
+
+        # Browser UI keywords - these indicate we've left the webpage
+        browser_ui_patterns = [
+            "address and search bar",
+            "address bar",
+            "search bar",
+            "url bar",
+            "omnibox",  # Chrome's URL bar
+            "share button",
+            "share",
+            "favorites",
+            "bookmarks",
+            "bookmark this tab",
+            "extensions",
+            "settings",
+            "new tab button",
+            "tab button",
+            "back button",
+            "forward button",
+            "refresh button",
+            "reload button",
+            "home button",
+            "minimize",
+            "maximize",
+            "close button",
+            "window",
+            "title bar",
+            "menu bar",
+            "tab bar",
+            "browser",
+            "toolbar",
+            "navigation bar",
+            "personal toolbar",
+            "downloads",
+            "history",
+            "zoom",
+        ]
+
+        # Check if any browser UI pattern matches
+        for pattern in browser_ui_patterns:
+            if pattern in nvda_lower:
+                return True
+
+        return False
+
     def run_validation(self) -> bool:
         """
         Run WCAG validation on collected data.
@@ -745,6 +828,13 @@ Examples:
 
   # Complete example with all options
   python -m src.main --url https://example.com --output report.html --max-actions 50 --fill-forms '{"username": "test", "password": "demo123"}' --open-report --verbose
+
+Features:
+  - Real NVDA Integration: Reads actual screen reader output when NVDA is running
+  - Browser UI Detection: Automatically stops when focus leaves webpage (prevents navigating through browser controls)
+  - Form Filling: Can automatically fill form fields with provided data
+  - Auto-open Report: Opens HTML report in browser after generation
+  - Graceful Fallback: Works without NVDA in simulated mode
 
 Exit Codes:
   0 - No accessibility issues found
