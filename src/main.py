@@ -16,6 +16,8 @@ import logging
 import signal
 import webbrowser
 import json
+import os
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -29,6 +31,8 @@ from src.correlation.action_logger import ActionLogger
 from src.correlation.correlator import FeedbackCorrelator
 from src.wcag.validator import WCAGValidator
 from src.reporting.html_generator import HTMLGenerator
+from src.screen_reader.output_monitor import NVDAOutputMonitor
+from src.screen_reader.nvda_parser import NVDALogParser
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +45,27 @@ logger = logging.getLogger(__name__)
 EXIT_SUCCESS = 0  # No issues found
 EXIT_ISSUES_FOUND = 1  # Accessibility issues detected
 EXIT_ERROR = 2  # Error during testing
+
+
+def get_nvda_log_path() -> Optional[Path]:
+    """
+    Detect NVDA log file path.
+
+    Returns:
+        Path to NVDA log file, or None if not found
+    """
+    # Default NVDA log location (Windows TEMP directory)
+    temp_dir = os.environ.get('TEMP', os.environ.get('TMP', ''))
+    if temp_dir:
+        log_path = Path(temp_dir) / 'nvda.log'
+        if log_path.exists():
+            logger.info(f"Found NVDA log file: {log_path}")
+            return log_path
+        else:
+            logger.warning(f"NVDA log file not found at: {log_path}")
+            logger.warning("Make sure NVDA is running with debug logging enabled")
+
+    return None
 
 
 class AccessibilityTestRunner:
@@ -84,10 +109,12 @@ class AccessibilityTestRunner:
         self.correlator: Optional[FeedbackCorrelator] = None
         self.validator: Optional[WCAGValidator] = None
         self.generator: Optional[HTMLGenerator] = None
+        self.nvda_monitor: Optional[NVDAOutputMonitor] = None
 
         # Runtime state
         self.is_running = False
         self.start_time: Optional[datetime] = None
+        self.nvda_log_path: Optional[Path] = None
 
     def setup(self) -> bool:
         """
@@ -135,6 +162,25 @@ class AccessibilityTestRunner:
             self.generator = HTMLGenerator()
             logger.info("HTML report generator initialized")
 
+            # Initialize NVDA monitor
+            self.nvda_log_path = get_nvda_log_path()
+            if self.nvda_log_path:
+                try:
+                    self.nvda_monitor = NVDAOutputMonitor(
+                        log_path=self.nvda_log_path,
+                        correlation_timeout=2.0,
+                        poll_interval=0.1
+                    )
+                    logger.info(f"NVDA monitor initialized (log: {self.nvda_log_path})")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize NVDA monitor: {e}")
+                    logger.warning("Will use simulated mode instead")
+                    self.nvda_monitor = None
+            else:
+                logger.warning("NVDA not detected - running in simulated mode")
+                logger.warning("Install and run NVDA with debug logging for full functionality")
+                self.nvda_monitor = None
+
             return True
 
         except Exception as e:
@@ -171,12 +217,18 @@ class AccessibilityTestRunner:
         """
         Run agent exploration of the page.
 
-        NOTE: This is a simplified exploration without NVDA integration.
-        In production, this would:
-        1. Start NVDA output monitoring
-        2. Run Pydantic AI agent with tools
-        3. Correlate actions with NVDA output
-        4. Build navigation memory
+        Uses real NVDA monitoring if available, otherwise falls back to simulation.
+
+        Real NVDA mode:
+        1. Monitors NVDA log file in real-time
+        2. Correlates keyboard actions with screen reader output
+        3. Detects unlabeled form fields, missing alt text, etc.
+        4. Builds navigation memory from actual NVDA announcements
+
+        Simulated mode (fallback):
+        1. Simulates basic navigation without NVDA
+        2. Limited issue detection
+        3. Used when NVDA is not installed/running
 
         Returns:
             True if exploration completed, False if error
@@ -189,6 +241,138 @@ class AccessibilityTestRunner:
                 logger.info(f"Form filling mode enabled with {len(self.form_data)} fields")
                 logger.info(f"Form data: {list(self.form_data.keys())}")
 
+            # Determine mode
+            if self.nvda_monitor:
+                logger.info("Running in REAL NVDA mode - reading screen reader output")
+                return self._run_nvda_exploration()
+            else:
+                logger.info("Running in SIMULATED mode - NVDA not available")
+                return self._run_simulated_exploration()
+
+        except Exception as e:
+            logger.error(f"Exploration failed: {e}", exc_info=True)
+            self.decision_engine.set_state(AgentState.ERROR)
+            return False
+
+    def _run_nvda_exploration(self) -> bool:
+        """
+        Run exploration with real NVDA monitoring.
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.decision_engine.set_state(AgentState.EXPLORING)
+
+            # Start monitoring NVDA log
+            self.nvda_monitor.start()
+            logger.info("NVDA monitoring started")
+
+            # Give NVDA a moment to start producing output
+            time.sleep(0.5)
+
+            # Track filled fields for form filling mode
+            filled_fields = []
+
+            # Exploration loop
+            for i in range(self.max_actions):
+                # Press Tab to navigate to next element
+                logger.info(f"Action {i+1}/{self.max_actions}: Pressing Tab")
+                action_timestamp = datetime.now()
+                self.keyboard.press_tab()
+
+                # Wait for NVDA to announce the element and get the speech output
+                nvda_speech = self.nvda_monitor.get_output_after(
+                    timestamp=action_timestamp,
+                    timeout=2.0
+                )
+
+                if nvda_speech:
+                    nvda_text = nvda_speech.full_text
+                    logger.info(f"  NVDA says: '{nvda_text}'")
+
+                    # Log the action
+                    self.action_logger.log_action(
+                        key="Tab",
+                        modifiers=[],
+                        context=f"Navigating to element {i}"
+                    )
+
+                    # Add correlation with NVDA output
+                    self.correlator.add_nvda_output(
+                        nvda_text=nvda_text,
+                        timestamp=datetime.now()
+                    )
+
+                    # Add to agent memory
+                    self.memory.add_element(
+                        nvda_text=nvda_text,
+                        key_used="Tab",
+                        element_id=f"elem_{i}",
+                        is_interactive=self._is_interactive_element(nvda_text)
+                    )
+
+                    # Form filling logic
+                    if self.form_data and self._is_form_field(nvda_text):
+                        field_name = self._extract_field_name(nvda_text)
+                        if field_name and field_name in self.form_data and field_name not in filled_fields:
+                            value = self.form_data[field_name]
+                            logger.info(f"  → Filling '{field_name}' with '{value}'")
+                            self.keyboard.type_text(str(value))
+                            filled_fields.append(field_name)
+                            time.sleep(0.2)
+                else:
+                    logger.warning(f"  No NVDA output detected (potential unlabeled element!)")
+                    # Still log the action even if no speech
+                    self.action_logger.log_action(
+                        key="Tab",
+                        modifiers=[],
+                        context=f"Silent element {i}"
+                    )
+
+                    # Add to memory with warning
+                    self.memory.add_element(
+                        nvda_text="[SILENT - No NVDA output]",
+                        key_used="Tab",
+                        element_id=f"elem_{i}",
+                        is_interactive=False
+                    )
+
+                # Check if max actions reached
+                self.decision_engine.increment_actions()
+                if self.decision_engine.has_reached_max_actions():
+                    logger.info("Reached maximum actions, stopping exploration")
+                    break
+
+            # Stop monitoring
+            self.nvda_monitor.stop()
+            logger.info("NVDA monitoring stopped")
+
+            # Report filled fields
+            if filled_fields:
+                logger.info(f"Form filling completed. Filled {len(filled_fields)} fields: {filled_fields}")
+
+            self.decision_engine.set_state(AgentState.COMPLETED)
+            logger.info(f"Exploration completed. Visited {self.memory.count_visits()} elements")
+            return True
+
+        except Exception as e:
+            logger.error(f"NVDA exploration failed: {e}", exc_info=True)
+            if self.nvda_monitor:
+                try:
+                    self.nvda_monitor.stop()
+                except:
+                    pass
+            return False
+
+    def _run_simulated_exploration(self) -> bool:
+        """
+        Run exploration in simulated mode (fallback when NVDA not available).
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
             self.decision_engine.set_state(AgentState.EXPLORING)
 
             # Simulate basic exploration for demonstration
@@ -278,6 +462,64 @@ class AccessibilityTestRunner:
             self.decision_engine.set_state(AgentState.ERROR)
             return False
 
+    def _is_interactive_element(self, nvda_text: str) -> bool:
+        """
+        Determine if NVDA output indicates an interactive element.
+
+        Args:
+            nvda_text: Text announced by NVDA
+
+        Returns:
+            True if element appears interactive, False otherwise
+        """
+        interactive_keywords = [
+            "button", "link", "edit", "checkbox", "radio",
+            "combo box", "list box", "menu", "tab", "clickable"
+        ]
+        nvda_lower = nvda_text.lower()
+        return any(keyword in nvda_lower for keyword in interactive_keywords)
+
+    def _is_form_field(self, nvda_text: str) -> bool:
+        """
+        Determine if NVDA output indicates a form field.
+
+        Args:
+            nvda_text: Text announced by NVDA
+
+        Returns:
+            True if element is a form field, False otherwise
+        """
+        form_keywords = ["edit", "combo box", "text area", "password"]
+        nvda_lower = nvda_text.lower()
+        return any(keyword in nvda_lower for keyword in form_keywords)
+
+    def _extract_field_name(self, nvda_text: str) -> Optional[str]:
+        """
+        Extract field name from NVDA output.
+
+        Examples:
+        - "Name edit" -> "name"
+        - "Email address edit" -> "email"
+        - "Message text area" -> "message"
+
+        Args:
+            nvda_text: Text announced by NVDA
+
+        Returns:
+            Extracted field name, or None if cannot determine
+        """
+        # Simple heuristic: take the first word before "edit", "combo box", etc.
+        nvda_lower = nvda_text.lower()
+
+        # Remove common suffixes
+        for suffix in [" edit", " combo box", " text area", " password"]:
+            if suffix in nvda_lower:
+                field_name = nvda_lower.replace(suffix, "").strip()
+                # Take first word or full phrase
+                return field_name.split()[0] if field_name else None
+
+        return None
+
     def run_validation(self) -> bool:
         """
         Run WCAG validation on collected data.
@@ -354,6 +596,14 @@ class AccessibilityTestRunner:
         """Clean up resources and close browser."""
         try:
             logger.info("Cleaning up...")
+
+            # Stop NVDA monitoring if running
+            if self.nvda_monitor:
+                try:
+                    self.nvda_monitor.stop()
+                    logger.info("NVDA monitoring stopped")
+                except Exception as e:
+                    logger.warning(f"Error stopping NVDA monitor: {e}")
 
             # Note: BrowserLauncher doesn't have close functionality yet
             # In production, would close browser window
