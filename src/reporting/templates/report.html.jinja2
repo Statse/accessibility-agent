@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WCAG Accessibility Report - {{ report.page_url }}</title>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header .url {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            word-break: break-all;
+        }
+
+        .header .date {
+            margin-top: 10px;
+            opacity: 0.8;
+            font-size: 0.95rem;
+        }
+
+        /* Content */
+        .content {
+            padding: 40px;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        /* Executive Summary */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .summary-card.critical {
+            border-left-color: #e53e3e;
+            background: #fff5f5;
+        }
+
+        .summary-card.high {
+            border-left-color: #ed8936;
+            background: #fffaf0;
+        }
+
+        .summary-card.medium {
+            border-left-color: #ecc94b;
+            background: #fffff0;
+        }
+
+        .summary-card.low {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+
+        .summary-card .number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .summary-card .label {
+            font-size: 0.9rem;
+            color: #718096;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-critical {
+            background-color: #e53e3e;
+            color: white;
+        }
+
+        .badge-high {
+            background-color: #ed8936;
+            color: white;
+        }
+
+        .badge-medium {
+            background-color: #ecc94b;
+            color: #744210;
+        }
+
+        .badge-low {
+            background-color: #48bb78;
+            color: white;
+        }
+
+        .badge-level-a {
+            background-color: #3182ce;
+            color: white;
+        }
+
+        .badge-level-aa {
+            background-color: #805ad5;
+            color: white;
+        }
+
+        .badge-level-aaa {
+            background-color: #38b2ac;
+            color: white;
+        }
+
+        .badge-pass {
+            background-color: #48bb78;
+            color: white;
+        }
+
+        .badge-fail {
+            background-color: #e53e3e;
+            color: white;
+        }
+
+        /* Conformance */
+        .conformance {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .conformance-item {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Issues */
+        .issue-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .issue-card:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .issue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .issue-title {
+            font-size: 1.2rem;
+            color: #2d3748;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .issue-meta {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .issue-description {
+            color: #4a5568;
+            margin-bottom: 15px;
+            line-height: 1.7;
+        }
+
+        .issue-details {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .issue-detail-row {
+            margin-bottom: 10px;
+        }
+
+        .issue-detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .issue-detail-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .issue-detail-value {
+            color: #4a5568;
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .keyboard-sequence {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .key {
+            background: #4a5568;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Recommendations */
+        .recommendation-card {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .recommendation-card.critical {
+            border-left-color: #e53e3e;
+        }
+
+        .recommendation-card.high {
+            border-left-color: #ed8936;
+        }
+
+        .recommendation-card.medium {
+            border-left-color: #ecc94b;
+        }
+
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .recommendation-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .recommendation-description {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .recommendation-action {
+            background: #f7fafc;
+            padding: 10px;
+            border-radius: 4px;
+            color: #2d3748;
+            font-style: italic;
+        }
+
+        /* WCAG Criteria Table */
+        .criteria-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .criteria-table th {
+            background: #f7fafc;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .criteria-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .criteria-table tr:hover {
+            background: #f7fafc;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-title {
+            font-size: 1.5rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        /* Footer */
+        .footer {
+            background: #f7fafc;
+            padding: 20px 40px;
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>WCAG Accessibility Report</h1>
+            <div class="url">{{ report.page_url }}</div>
+            <div class="date">Generated: {{ generation_time | format_datetime }}</div>
+        </div>
+
+        <div class="content">
+            <!-- Executive Summary -->
+            <section class="section">
+                <h2 class="section-title">Executive Summary</h2>
+
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="number">{{ report.total_issues }}</div>
+                        <div class="label">Total Issues</div>
+                    </div>
+                    {% if report.issues_by_severity.get('critical', 0) > 0 %}
+                    <div class="summary-card critical">
+                        <div class="number">{{ report.issues_by_severity.get('critical', 0) }}</div>
+                        <div class="label">Critical</div>
+                    </div>
+                    {% endif %}
+                    {% if report.issues_by_severity.get('high', 0) > 0 %}
+                    <div class="summary-card high">
+                        <div class="number">{{ report.issues_by_severity.get('high', 0) }}</div>
+                        <div class="label">High</div>
+                    </div>
+                    {% endif %}
+                    {% if report.issues_by_severity.get('medium', 0) > 0 %}
+                    <div class="summary-card medium">
+                        <div class="number">{{ report.issues_by_severity.get('medium', 0) }}</div>
+                        <div class="label">Medium</div>
+                    </div>
+                    {% endif %}
+                    {% if report.issues_by_severity.get('low', 0) > 0 %}
+                    <div class="summary-card low">
+                        <div class="number">{{ report.issues_by_severity.get('low', 0) }}</div>
+                        <div class="label">Low</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ report.elements_explored }}</div>
+                        <div class="stat-label">Elements Explored</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ report.headings_found }}</div>
+                        <div class="stat-label">Headings</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ report.links_found }}</div>
+                        <div class="stat-label">Links</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ report.forms_found }}</div>
+                        <div class="stat-label">Form Fields</div>
+                    </div>
+                    {% if report.duration_seconds %}
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "%.1f"|format(report.duration_seconds) }}s</div>
+                        <div class="stat-label">Duration</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px; color: #2d3748;">WCAG Conformance</h3>
+                <div class="conformance">
+                    <div class="conformance-item">
+                        <strong>Level A:</strong>
+                        <span class="badge {{ 'badge-pass' if pass_fail.level_a_pass else 'badge-fail' }}">
+                            {{ 'PASS' if pass_fail.level_a_pass else 'FAIL' }}
+                        </span>
+                    </div>
+                    <div class="conformance-item">
+                        <strong>Level AA:</strong>
+                        <span class="badge {{ 'badge-pass' if pass_fail.level_aa_pass else 'badge-fail' }}">
+                            {{ 'PASS' if pass_fail.level_aa_pass else 'FAIL' }}
+                        </span>
+                    </div>
+                    <div class="conformance-item">
+                        <strong>Level AAA:</strong>
+                        <span class="badge {{ 'badge-pass' if pass_fail.level_aaa_pass else 'badge-fail' }}">
+                            {{ 'PASS' if pass_fail.level_aaa_pass else 'FAIL' }}
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Issues by Severity -->
+            {% if report.total_issues > 0 %}
+            <section class="section">
+                <h2 class="section-title">Issues by Severity</h2>
+
+                {% for severity_level in ['critical', 'high', 'medium', 'low'] %}
+                    {% set severity_issues = issues_by_severity[severity_level] %}
+                    {% if severity_issues %}
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; color: #2d3748;">
+                        <span class="badge {{ severity_level | severity_badge_class }}">{{ severity_level | upper }}</span>
+                        ({{ severity_issues | length }} issue{{ 's' if severity_issues | length != 1 else '' }})
+                    </h3>
+
+                    {% for issue in severity_issues %}
+                    <div class="issue-card">
+                        <div class="issue-header">
+                            <div class="issue-title">{{ issue.title }}</div>
+                            <div class="issue-meta">
+                                <span class="badge {{ issue.severity | severity_badge_class }}">{{ issue.severity | upper }}</span>
+                                <span class="badge {{ issue.criterion.level | level_badge_class }}">{{ issue.criterion.level }}</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <strong>WCAG {{ issue.criterion.criterion_id }}:</strong> {{ issue.criterion.name }}
+                        </div>
+
+                        <div class="issue-description">{{ issue.description }}</div>
+
+                        <div class="issue-details">
+                            {% if issue.nvda_output %}
+                            <div class="issue-detail-row">
+                                <div class="issue-detail-label">NVDA Output:</div>
+                                <div class="issue-detail-value">{{ issue.nvda_output }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if issue.keyboard_sequence %}
+                            <div class="issue-detail-row">
+                                <div class="issue-detail-label">Keyboard Sequence:</div>
+                                <div class="keyboard-sequence">
+                                    {% for key in issue.keyboard_sequence %}
+                                    <span class="key">{{ key }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if issue.expected_behavior %}
+                            <div class="issue-detail-row">
+                                <div class="issue-detail-label">Expected Behavior:</div>
+                                <div class="issue-detail-value">{{ issue.expected_behavior }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if issue.recommendation %}
+                            <div class="issue-detail-row">
+                                <div class="issue-detail-label">How to Fix:</div>
+                                <div class="issue-detail-value">{{ issue.recommendation }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if issue.element_context %}
+                            <div class="issue-detail-row">
+                                <div class="issue-detail-label">Context:</div>
+                                <div class="issue-detail-value">{{ issue.element_context }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </section>
+
+            <!-- WCAG Criteria Breakdown -->
+            <section class="section">
+                <h2 class="section-title">WCAG Criteria Breakdown</h2>
+
+                <table class="criteria-table">
+                    <thead>
+                        <tr>
+                            <th>Criterion</th>
+                            <th>Name</th>
+                            <th>Level</th>
+                            <th>Issues Found</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for criterion_id, count in report.issues_by_criterion.items() | sort %}
+                        {% set sample_issue = report.issues | selectattr('criterion.criterion_id', 'equalto', criterion_id) | first %}
+                        <tr>
+                            <td><strong>{{ criterion_id }}</strong></td>
+                            <td>{{ sample_issue.criterion.name }}</td>
+                            <td><span class="badge {{ sample_issue.criterion.level | level_badge_class }}">{{ sample_issue.criterion.level }}</span></td>
+                            <td>{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Recommendations -->
+            {% if recommendations %}
+            <section class="section">
+                <h2 class="section-title">Recommendations</h2>
+
+                {% for rec in recommendations %}
+                <div class="recommendation-card {{ rec.priority | lower }}">
+                    <div class="recommendation-header">
+                        <div class="recommendation-title">{{ rec.title }}</div>
+                        <span class="badge {{ rec.priority | lower | severity_badge_class }}">{{ rec.priority | upper }}</span>
+                    </div>
+                    <div class="recommendation-description">{{ rec.description }}</div>
+                    <div class="recommendation-action">
+                        <strong>Action:</strong> {{ rec.action }}
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            {% else %}
+            <!-- No Issues Found -->
+            <section class="section">
+                <div class="empty-state">
+                    <div class="empty-state-icon">✓</div>
+                    <div class="empty-state-title">No Accessibility Issues Found</div>
+                    <p>Congratulations! This page passed all automated WCAG checks.</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem;">
+                        Note: Automated testing cannot catch all accessibility issues. Manual testing with real users is still recommended.
+                    </p>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Generated by Agentic Accessibility Testing Environment</p>
+            <p>Report generated on {{ generation_time | format_datetime }}</p>
+            <p style="margin-top: 10px; font-size: 0.85rem;">
+                This report is based on WCAG 2.1/2.2 guidelines and screen reader (NVDA) testing.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
