@@ -46,9 +46,35 @@ keyboard:
 
 # Agent Settings
 agent:
+  # LLM provider: "openai" or "ollama"
+  provider: "openai"
+
   # AI model to use for decision making
-  # Format: "provider:model" (e.g., "openai:gpt-4", "openai:gpt-4-turbo")
+  # OpenAI format: "openai:gpt-4", "openai:gpt-4-turbo", "openai:gpt-3.5-turbo"
+  # Ollama format: "ollama:llama3.2", "ollama:mistral", "ollama:qwen2.5"
   model: "openai:gpt-4"
+
+  # Ollama server settings (only used when provider is "ollama")
+  ollama:
+    # Ollama server URL
+    base_url: "http://localhost:11434"
+
+    # Default model to use with Ollama
+    default_model: "llama3.2"
+
+    # Timeout for Ollama requests (seconds)
+    timeout: 120.0
+
+  # Fallback behavior when primary provider fails
+  fallback:
+    # Enable fallback to alternative provider
+    enabled: false
+
+    # Provider to fallback to: "openai" or "ollama"
+    provider: "openai"
+
+    # Model to use for fallback
+    model: "openai:gpt-4"
 
   # Maximum number of actions before stopping (prevents infinite loops)
   max_actions: 100

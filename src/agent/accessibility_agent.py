@@ -2,9 +2,10 @@
 
 import hashlib
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from ..automation.keyboard_controller import KeyboardController, NVDAKey
 from ..correlation.action_logger import ActionLogger
@@ -111,6 +112,8 @@ class AccessibilityAgent:
         action_logger: Optional[ActionLogger] = None,
         correlator: Optional[FeedbackCorrelator] = None,
         model: str = "openai:gpt-4",
+        provider: str = "openai",
+        ollama_base_url: str = "http://localhost:11434/v1",
     ):
         """Initialize the accessibility agent.
 
@@ -120,7 +123,9 @@ class AccessibilityAgent:
             memory: Agent memory (creates new if None)
             action_logger: Action logger (creates new if None)
             correlator: Feedback correlator (creates new if None)
-            model: Pydantic AI model to use (default: openai:gpt-4)
+            model: Model string (e.g., "openai:gpt-4" or "llama3.2")
+            provider: LLM provider - "openai" or "ollama" (default: openai)
+            ollama_base_url: Base URL for Ollama server (default: http://localhost:11434/v1)
         """
         # Initialize components
         self.keyboard_controller = keyboard_controller or KeyboardController()
@@ -143,9 +148,24 @@ class AccessibilityAgent:
             correlator=self.correlator,
         )
 
+        # Determine model configuration based on provider
+        if provider == "ollama":
+            # For Ollama, create OpenAIChatModel with custom base URL
+            # Strip "ollama:" prefix if present in model string
+            model_name = model.replace("ollama:", "")
+            pydantic_model: Union[str, OpenAIChatModel] = OpenAIChatModel(
+                model_name=model_name,
+                base_url=ollama_base_url,
+            )
+            logger.info(f"Using Ollama provider with model={model_name} at {ollama_base_url}")
+        else:
+            # For OpenAI and other providers, use the model string directly
+            pydantic_model = model
+            logger.info(f"Using {provider} provider with model={model}")
+
         # Create Pydantic AI agent
         self.agent: Agent[AccessibilityAgentDependencies, str] = Agent(
-            model=model,
+            model=pydantic_model,
             system_prompt=SCREEN_READER_USER_PERSONA,
             deps_type=AccessibilityAgentDependencies,
         )
@@ -154,8 +174,6 @@ class AccessibilityAgent:
         self._register_tools()
 
         self.current_url: Optional[str] = None
-
-        logger.info(f"AccessibilityAgent initialized with model={model}")
 
     def _register_tools(self) -> None:
         """Register tools that the agent can use."""

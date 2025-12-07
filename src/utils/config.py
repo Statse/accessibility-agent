@@ -46,10 +46,29 @@ class KeyboardConfig(BaseModel):
     initial_delay: float = Field(default=2.0)
 
 
+class OllamaConfig(BaseModel):
+    """Ollama server configuration."""
+
+    base_url: str = Field(default="http://localhost:11434")
+    default_model: str = Field(default="llama3.2")
+    timeout: float = Field(default=120.0)
+
+
+class FallbackConfig(BaseModel):
+    """Fallback provider configuration."""
+
+    enabled: bool = Field(default=False)
+    provider: str = Field(default="openai")
+    model: str = Field(default="openai:gpt-4")
+
+
 class AgentConfig(BaseModel):
     """AI agent configuration."""
 
+    provider: str = Field(default="openai")
     model: str = Field(default="openai:gpt-4")
+    ollama: OllamaConfig = Field(default_factory=OllamaConfig)
+    fallback: FallbackConfig = Field(default_factory=FallbackConfig)
     max_actions: int = Field(default=100)
     exploration_depth: int = Field(default=3)
     temperature: float = Field(default=0.7)
@@ -156,18 +175,35 @@ def load_config(config_path: str | Path | None = None) -> Settings:
         config_data: dict[str, Any] = yaml.safe_load(f)
 
     # Override with environment variables
-    # Check for OPENAI_API_KEY (required for agent)
-    if not os.getenv("OPENAI_API_KEY"):
-        raise ValueError(
-            "OPENAI_API_KEY environment variable not set. "
-            "Please add it to your .env file or set it in your environment."
-        )
+    # Initialize agent config if not present
+    if "agent" not in config_data:
+        config_data["agent"] = {}
+
+    # Override LLM provider if specified in env
+    if os.getenv("LLM_PROVIDER"):
+        config_data["agent"]["provider"] = os.getenv("LLM_PROVIDER")
 
     # Override model if specified in env
-    if os.getenv("OPENAI_MODEL"):
-        if "agent" not in config_data:
-            config_data["agent"] = {}
+    if os.getenv("LLM_MODEL"):
+        config_data["agent"]["model"] = os.getenv("LLM_MODEL")
+    elif os.getenv("OPENAI_MODEL"):
         config_data["agent"]["model"] = os.getenv("OPENAI_MODEL")
+
+    # Override Ollama settings if specified in env
+    if os.getenv("OLLAMA_BASE_URL"):
+        if "ollama" not in config_data["agent"]:
+            config_data["agent"]["ollama"] = {}
+        config_data["agent"]["ollama"]["base_url"] = os.getenv("OLLAMA_BASE_URL")
+
+    # Check for OPENAI_API_KEY if using OpenAI provider
+    provider = config_data["agent"].get("provider", "openai")
+    if provider == "openai" and not os.getenv("OPENAI_API_KEY"):
+        raise ValueError(
+            "OPENAI_API_KEY environment variable not set. "
+            "Please add it to your .env file or set it in your environment. "
+            "Alternatively, use Ollama as your LLM provider by setting provider='ollama' in settings.yaml "
+            "or LLM_PROVIDER='ollama' in your environment."
+        )
 
     # Override NVDA log path if specified in env
     if os.getenv("NVDA_LOG_PATH"):

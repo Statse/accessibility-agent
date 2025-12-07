@@ -2,6 +2,42 @@
 
 AI agent simulating a screen reader user to test websites and generate WCAG compliance reports.
 
+## 🤖 LLM Provider Support
+
+The accessibility agent supports multiple LLM providers:
+
+- **OpenAI** (GPT-4, GPT-3.5-turbo) - Cloud-based, high quality
+- **Ollama** (Llama 3.2, Mistral, Qwen, etc.) - Local, private, free
+
+### Quick Setup: Ollama (Local LLM)
+
+For private, cost-free testing with local models:
+
+```bash
+# 1. Install Ollama
+# Download from https://ollama.com
+
+# 2. Pull a model
+ollama pull llama3.2
+
+# 3. Configure provider
+echo "LLM_PROVIDER=ollama" >> .env
+echo "LLM_MODEL=llama3.2" >> .env
+
+# 4. Test integration
+python test_ollama.py
+```
+
+See [docs/OLLAMA_SETUP.md](docs/OLLAMA_SETUP.md) for detailed setup instructions.
+
+### Quick Setup: OpenAI
+
+```bash
+# Set your API key in .env
+echo "OPENAI_API_KEY=sk-your-key-here" >> .env
+echo "LLM_PROVIDER=openai" >> .env
+```
+
 ## 🚀 Quick Start
 
 ```bash
