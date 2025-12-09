@@ -36,7 +36,17 @@
       "Bash(else mkdir -p src/reporting/templates)",
       "Bash(if [ -d \"src/reporting/templates\" ])",
       "Bash(then echo \"Templates directory exists\")",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git push)",
+      "Bash(gh issue list:*)",
+      "Bash(git remote:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(winget:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(msiexec:*)",
+      "Bash(gh:*)",
+      "WebSearch",
+      "WebFetch(domain:ai.pydantic.dev)"
     ],
     "deny": [],
     "ask": []
